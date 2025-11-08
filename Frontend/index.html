@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Prescription OCR - Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width:800px; margin:40px auto; }
+    textarea { width:100%; height:300px; }
+    .btn { padding:8px 12px; margin-top:8px; }
+    #status { color: #b00; margin-top:10px; }
+    #status.ok { color: #080; }
+  </style>
+</head>
+<body>
+  <h2>Prescription OCR — demo upload</h2>
+
+  <input id="file" type="file" accept="application/pdf" />
+  <br/>
+  <button id="upload" class="btn">Upload PDF & Run OCR</button>
+  <p id="status"></p>
+  <h3>Response JSON</h3>
+  <textarea id="result" readonly></textarea>
+
+  <script>
+    // POINT THIS at your running backend
+    const BACKEND_URL = 'http://127.0.0.1:8001';
+
+    const upload = document.getElementById('upload');
+    const fileInput = document.getElementById('file');
+    const result = document.getElementById('result');
+    const status = document.getElementById('status');
+
+    function showStatus(text, ok=false) {
+      status.textContent = text;
+      status.className = ok ? 'ok' : '';
+      status.style.color = ok ? 'green' : '#b00';
+      console.log(text);
+    }
+
+    upload.addEventListener('click', async () => {
+      const f = fileInput.files[0];
+      if (!f) { alert('Choose a PDF'); return; }
+      showStatus('Uploading...', false);
+      result.value = '';
+      try {
+        const fd = new FormData();
+        fd.append('file', f, f.name);
+
+        const res = await fetch(BACKEND_URL + '/extract', {
+          method: 'POST',
+          body: fd
+        });
+
+        if (!res.ok) {
+          const txt = await res.text();
+          showStatus(`Server error: ${res.status} ${res.statusText} — ${txt}`, false);
+          return;
+        }
+
+        const j = await res.json();
+        result.value = JSON.stringify(j, null, 2);
+        showStatus('Done — response above', true);
+      } catch (err) {
+        showStatus('Network / Fetch error: ' + (err && err.message || err), false);
+        console.error('Fetch error (likely CORS or network):', err);
+      }
+    });
+  </script>
+</body>
+</html>
